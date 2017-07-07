@@ -93,12 +93,11 @@ static int StartDebugSignalHandler() {
   CHECK_EQ(0, uv_sem_init(&start_io_thread_semaphore, 0));
   pthread_attr_t attr;
   CHECK_EQ(0, pthread_attr_init(&attr));
-  // Don't shrink the thread's stack on FreeBSD.  Said platform decided to
-  // follow the pthreads specification to the letter rather than in spirit:
-  // https://lists.freebsd.org/pipermail/freebsd-current/2014-March/048885.html
-#ifndef __FreeBSD__
-  CHECK_EQ(0, pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN));
-#endif  // __FreeBSD__
+  if (sizeof (int *) == 4) {
+    // Running in 32-bit mode, and the address space is small enough to
+    // fragment, so give ourselves a small stack above the minimum.
+    CHECK_EQ(0, pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN + 16384));
+  }
   CHECK_EQ(0, pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED));
   sigset_t sigmask;
   // Mask all signals.
